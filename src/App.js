@@ -1,19 +1,21 @@
 import logo from './logo.svg';
 import './App.css';
 import * as THREE from "three";
-import React, { Component } from "react";
+import React, { Component, useEffect, useRef } from "react";
 
+const App = () => {
 
-class App extends Component {
+  let renderer;
+  const divRef = useRef();
 
-  componentDidMount() {
+  useEffect(() => {
     var scene = new THREE.Scene();
     var camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000 );
-    var renderer = new THREE.WebGLRenderer();
+    renderer = new THREE.WebGLRenderer();
     renderer.setSize( window.innerWidth, window.innerHeight );
     // document.body.appendChild( renderer.domElement );
     // use ref as a mount point of the Three.js scene instead of the document.body
-    this.mount.appendChild( renderer.domElement );
+    divRef.current.appendChild( renderer.domElement );
     var geometry = new THREE.BoxGeometry( 1, 1, 1 );
     var material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
     var cube = new THREE.Mesh( geometry, material );
@@ -26,13 +28,11 @@ class App extends Component {
       renderer.render( scene, camera );
     };
     animate();
-  }
+  }, []);
 
-  render() {
-    return (
-      <div ref={ref => (this.mount = ref)} />
-    )
-  }
-}
+  return (
+    <div ref={divRef} />
+  );
+};
 
 export default App;
