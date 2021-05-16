@@ -7,6 +7,8 @@ import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
 import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader.js";
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader';
 import { GUI } from 'three/examples/jsm/libs/dat.gui.module.js';
+import { TWEEN } from 'three/examples/jsm/libs/tween.module.min.js';
+import * as CANNON from "cannon";
 
 const App = () => {
   let renderer;
@@ -16,6 +18,7 @@ const App = () => {
   useEffect(() => {
     console.log("************   YES ***********");
 
+    const world = new CANNON.World();
     var scene = new THREE.Scene();
     // scene.background = new THREE.Color(0xFF0000);
     const axesHelper = new THREE.AxesHelper(10);
@@ -145,6 +148,7 @@ const App = () => {
     let animationActions = new Array();
     let activeAction;
     let lastAction;
+    let modelMesh;
 
     const setAction = (toAction) => {
       if (toAction != activeAction) {
@@ -162,26 +166,37 @@ const App = () => {
       default: function () {
           setAction(animationActions[0])
       },
-      dance: function () {
+      walk: function () {
           setAction(animationActions[1])
       },
     }
 
-    const gui = new GUI()
-    const animationsFolder = gui.addFolder("Animations")
-    animationsFolder.open()
+    const gui = new GUI();
+    const animationsFolder = gui.addFolder("Animations");
+    animationsFolder.open();
+
+    const sceneMeshes = new Array();
+    const planeGeometry = new THREE.PlaneGeometry(25, 25);
+    const plane = new THREE.Mesh(planeGeometry, new THREE.MeshPhongMaterial());
+    plane.rotateX(-1.0 * Math.PI / 2);
+    plane.receiveShadow = true;
+    scene.add(plane);
+    sceneMeshes.push(plane);
 
     const fbxLoader = new FBXLoader();
     fbxLoader.load('models/kaya.fbx',
       (object) => {
-        // object.traverse(function (child) {
-        //     if ((child).isMesh) {
-        //         (child).material = material
-        //         if ((child).material) {
-        //             ((child).material).transparent = false
-        //         }
-        //     }
-        // });
+        object.traverse(function (child) {
+            if ((child).isMesh) {
+                let m = child;
+                m.receiveShadow = true;
+                m.castShadow = true;
+                m.frustumCulled = false;
+                m.geometry.computeVertexNormals();
+
+                sceneMeshes.push(m);
+            }
+        });
 
         object.scale.set(.01, .01, .01);
 
@@ -192,7 +207,7 @@ const App = () => {
         activeAction = animationActions[0];
 
         scene.add(object);
-
+        modelMesh = object;
         // let display = new Promise((resolve, reject) => {
         //   scene.add(object);
 
@@ -206,12 +221,12 @@ const App = () => {
         //   () => {}
         // );
 
-        fbxLoader.load('models/Dancing_Twerk.fbx',
+        fbxLoader.load('models/Unarmed Walk Forward.fbx',
             (object) => {
               // object.scale.set(0.01, 0.01, 0.01);
               let animationAction = mixer.clipAction(object.animations[0]);
               animationActions.push(animationAction);
-              animationsFolder.add(animations, "dance");
+              animationsFolder.add(animations, "walk");
 
               console.dir(animationAction);
               animationAction.play();
@@ -232,7 +247,7 @@ const App = () => {
               // animationAction.play();
               // scene.add(object);
               modelReady = true;
-            
+   
             }
         );
       },
@@ -271,13 +286,18 @@ const App = () => {
       // cube.rotation.x += 0.01;
       // cube.rotation.y += 0.01;
       controls.update();
-      
+
+      const delta = clock.getDelta();
+
       if (modelReady) {
-        mixer.update(clock.getDelta());
-        // console.log("Yes");
-        // console.log("===============");
-        // console.log(clock.getDelta());
+        mixer.update(delta);
+
+        if (!modelMesh.quaternion.equals(targetQuaternion)) {
+          modelMesh.quaternion.rotateTowards(targetQuaternion, delta * 10);
+        }
       }
+
+      TWEEN.update();
       
       render();
     };
@@ -292,6 +312,89 @@ const App = () => {
 
     controls.addEventListener("change", render);
     window.addEventListener("resize", onWindowResize, false);
+
+    const raycaster = new THREE.Raycaster();
+    const targetQuaternion = new THREE.Quaternion;
+
+    const onMouseMove = (event) => {
+      const mouse = {
+        x: (event.clientX / renderer.domElement.clientWidth) * 2 - 1,
+        y: -(event.clientY / renderer.domElement.clientHeight) * 2 + 1
+      };
+
+      raycaster.setFromCamera(mouse, camera);
+
+      const intersects = raycaster.intersectObjects(sceneMeshes, false);
+
+      if (intersects.length > 0) {
+        // console.log(sceneMeshes.length + " " + intersects.length);
+        // console.log(intersects[0].object.name + " " + intersects[0].distance + " ");
+      }
+    };
+
+    renderer.domElement.addEventListener('mousemove', onMouseMove, false);
+
+    const onDoubleClick = (event) => {
+      const mouse = {
+        x: (event.clientX / renderer.domElement.clientWidth) * 2 - 1,
+        y: -(event.clientY / renderer.domElement.clientHeight) * 2 + 1
+      };
+      raycaster.setFromCamera(mouse, camera);
+
+      const intersects = raycaster.intersectObjects(sceneMeshes, false);
+
+      if (intersects.length > 0) {
+        const p = intersects[0].point;
+
+        // controls.target.set(p.x, p.y, p.z);
+
+        // TWEEN.removeAll();
+        // new TWEEN.Tween(controls.target)
+        //     .to({
+        //         x: p.x,
+        //         y: p.y,
+        //         z: p.z
+        //     }, 500)
+        //     //.delay (1000)
+        //     .easing(TWEEN.Easing.Bounce.Out)
+        //     // .onUpdate(() => render())
+        //     .start();
+
+        const distance = modelMesh.position.distanceTo(p);
+
+        const rotationMatrix = new THREE.Matrix4();
+        rotationMatrix.lookAt(p, modelMesh.position, modelMesh.up);
+        targetQuaternion.setFromRotationMatrix(rotationMatrix);
+
+        setAction(animationActions[1]);
+
+        TWEEN.removeAll();
+        new TWEEN.Tween(modelMesh.position)
+            .to({
+              x: p.x,
+              y: p.y,
+              z: p.z
+            }, 1000 / 2.2 * distance)
+            .onUpdate(() => {
+              controls.target.set(
+                modelMesh.position.x,
+                modelMesh.position.y + 1,
+                modelMesh.position.z
+              );
+
+              // You can change light position here so light follows the object
+              // light1.target = modelMesh;
+            })
+            .start()
+            .onComplete(() => {
+              setAction(animationActions[0]);
+              activeAction.clampWhenFinished = true;
+              activeAction.loop = THREE.LoopOnce;
+            });
+      }
+    };
+    renderer.domElement.addEventListener('dblclick', onDoubleClick, false);
+
 
     render();
 
