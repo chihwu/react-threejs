@@ -9,6 +9,7 @@ import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader';
 import { GUI } from 'three/examples/jsm/libs/dat.gui.module.js';
 import { TWEEN } from 'three/examples/jsm/libs/tween.module.min.js';
 import * as CANNON from "cannon";
+import CannonDebugRenderer from './utils/CannonDebugRenderer';
 
 const App = () => {
   let renderer;
@@ -19,10 +20,17 @@ const App = () => {
     console.log("************   YES ***********");
 
     const world = new CANNON.World();
+    world.gravity.set(0, -9.82, 0);
+    world.broadphase = new CANNON.NaiveBroadphase();
+    world.solver.iterations = 10;
+    world.allowSleep = true;
+
     var scene = new THREE.Scene();
     // scene.background = new THREE.Color(0xFF0000);
     const axesHelper = new THREE.AxesHelper(10);
     scene.add(axesHelper);
+
+    var cannonDebugRenderer = CannonDebugRenderer( scene, world );
 
     const light = new THREE.PointLight(0xffffff, 2);
     light.position.set(10, 10, 10);
@@ -37,7 +45,8 @@ const App = () => {
     renderer = new THREE.WebGLRenderer();
     renderer.setSize(window.innerWidth, window.innerHeight);
     // use ref as a mount point of the Three.js scene
-
+    
+    divRef.current.innerHTML = "";
     divRef.current.appendChild(renderer.domElement);
 
     var controls = new OrbitControls(camera, renderer.domElement);
@@ -149,6 +158,7 @@ const App = () => {
     let activeAction;
     let lastAction;
     let modelMesh;
+    let cubeBody;
 
     const setAction = (toAction) => {
       if (toAction != activeAction) {
@@ -183,6 +193,12 @@ const App = () => {
     scene.add(plane);
     sceneMeshes.push(plane);
 
+    const planeShape = new CANNON.Plane();
+    const planeBody = new CANNON.Body({ mass: 0 });
+    planeBody.addShape(planeShape);
+    planeBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
+    world.addBody(planeBody);
+
     const fbxLoader = new FBXLoader();
     fbxLoader.load('models/kaya.fbx',
       (object) => {
@@ -197,6 +213,14 @@ const App = () => {
                 sceneMeshes.push(m);
             }
         });
+
+        const cubeShape = new CANNON.Box(new CANNON.Vec3(0.5, 0.5, 0.5));
+        cubeBody = new CANNON.Body({ mass: 1 });
+        cubeBody.addShape(cubeShape);
+        cubeBody.position.x = object.position.x;
+        cubeBody.position.y = object.position.y;
+        cubeBody.position.z = object.position.z;
+        world.addBody(cubeBody);
 
         object.scale.set(.01, .01, .01);
 
@@ -287,10 +311,18 @@ const App = () => {
       // cube.rotation.y += 0.01;
       controls.update();
 
-      const delta = clock.getDelta();
+      let delta = clock.getDelta();
+      if (delta > 0.1) {  // solve a weird issue happened when switching between browsers
+        delta = 0.1;
+      }
+
+      world.step(delta);
 
       if (modelReady) {
         mixer.update(delta);
+
+        modelMesh.position.set(cubeBody.position.x, cubeBody.position.y, cubeBody.position.z);
+        modelMesh.quaternion.set(cubeBody.quaternion.x, cubeBody.quaternion.y, cubeBody.quaternion.z, cubeBody.quaternion.w);  
 
         if (!modelMesh.quaternion.equals(targetQuaternion)) {
           modelMesh.quaternion.rotateTowards(targetQuaternion, delta * 10);
