@@ -2,7 +2,6 @@ import * as THREE from 'three';
 // import * as CANNON from 'cannon-es';
 import * as CANNON from "cannon";
 
-
 /* global CANNON,THREE,Detector */
 
 /**
@@ -12,20 +11,22 @@ import * as CANNON from "cannon";
  * @param {CANNON.World} world
  * @param {object} [options]
  */
- export default function CannonDebugRenderer(scene, world, options){
+const CannonDebugRenderer = (scene, world, options) => {
     options = options || {};
 
-    this.scene = scene;
-    this.world = world;
+    scene = scene;
+    world = world;
 
-    this._meshes = [];
+    let _meshes = [];
 
-    this._material = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
-    this._sphereGeometry = new THREE.SphereGeometry(1);
-    this._boxGeometry = new THREE.BoxGeometry(1, 1, 1);
-    this._planeGeometry = new THREE.PlaneGeometry( 10, 10, 10, 10 );
-    this._cylinderGeometry = new THREE.CylinderGeometry( 1, 1, 10, 10 );
+    let _material = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
+    let _sphereGeometry = new THREE.SphereGeometry(1);
+    let _boxGeometry = new THREE.BoxGeometry(1, 1, 1);
+    let _planeGeometry = new THREE.PlaneGeometry( 10, 10, 10, 10 );
+    let _cylinderGeometry = new THREE.CylinderGeometry( 1, 1, 10, 10 );
 };
+
+export default CannonDebugRenderer;
 
 CannonDebugRenderer.prototype = {
 

@@ -9,12 +9,11 @@ import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader';
 import { GUI } from 'three/examples/jsm/libs/dat.gui.module.js';
 import { TWEEN } from 'three/examples/jsm/libs/tween.module.min.js';
 import * as CANNON from "cannon";
-import CannonDebugRenderer from './utils/CannonDebugRenderer';
+// import CannonDebugRenderer from './utils/CannonDebugRenderer.js';
 
 const App = () => {
   let renderer;
   const divRef = useRef();
-  // const [modelReady, setModelReady] = useState(false);
 
   useEffect(() => {
     console.log("************   YES ***********");
@@ -30,7 +29,7 @@ const App = () => {
     const axesHelper = new THREE.AxesHelper(10);
     scene.add(axesHelper);
 
-    var cannonDebugRenderer = CannonDebugRenderer( scene, world );
+    // var cannonDebugRenderer = CannonDebugRenderer( scene, world );
 
     const light = new THREE.PointLight(0xffffff, 2);
     light.position.set(10, 10, 10);
@@ -321,8 +320,8 @@ const App = () => {
       if (modelReady) {
         mixer.update(delta);
 
-        modelMesh.position.set(cubeBody.position.x, cubeBody.position.y, cubeBody.position.z);
-        modelMesh.quaternion.set(cubeBody.quaternion.x, cubeBody.quaternion.y, cubeBody.quaternion.z, cubeBody.quaternion.w);  
+        // modelMesh.position.set(cubeBody.position.x, cubeBody.position.y, cubeBody.position.z);
+        // modelMesh.quaternion.set(cubeBody.quaternion.x, cubeBody.quaternion.y, cubeBody.quaternion.z, cubeBody.quaternion.w);  
 
         if (!modelMesh.quaternion.equals(targetQuaternion)) {
           modelMesh.quaternion.rotateTowards(targetQuaternion, delta * 10);
